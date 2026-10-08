@@ -259,7 +259,7 @@ describe('the swipe on a rendered set row', () => {
   })
 
   it('a tap on + is a tap, a swipe that starts on + does not press it', () => {
-    setActive([entry('1001', [row(80), row(80)])])
+    setActive([entry('1001', [row(80), row(80)])], { wc: { steppers: true } })
     render()
     pointer(repsPlus(0), 'pointerdown', 200)
     pointer(repsPlus(0), 'pointerup', 200)

@@ -1,0 +1,7 @@
+# Use with the server's existing docker-compose.yml. Keep .env, data and media in place.
+# Supply these image names through the shell, rather than committing deployment credentials.
+services:
+  api:
+    image: ${OPENGYM_API_IMAGE:?Set OPENGYM_API_IMAGE to your fork image and sha tag}
+  web:
+    image: ${OPENGYM_WEB_IMAGE:?Set OPENGYM_WEB_IMAGE to your fork image and sha tag}

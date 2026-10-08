@@ -127,7 +127,14 @@ describe('the superset card after a rating', () => {
   const watchScrolls = () => { const seen = []; dom.Element.prototype.scrollIntoView = vi.fn(function () { seen.push(this) }); return seen }
   // Where every row stands on a 659 px screen (linkedom lays nothing out): 400 is in view, 889 is
   // below the fold.
-  const rowsAt = top => { dom.innerHeight = 659; dom.Element.prototype.getBoundingClientRect = () => ({ top, bottom: top + 44, left: 0, right: 390, width: 390, height: 44 }) }
+  const rowsAt = top => {
+    dom.innerHeight = 659
+    dom.Element.prototype.getBoundingClientRect = function () {
+      return this.classList.contains('whdr')
+        ? { top: 0, bottom: 0, left: 0, right: 390, width: 390, height: 0 }
+        : { top, bottom: top + 44, left: 0, right: 390, width: 390, height: 44 }
+    }
+  }
   // The height the bars at the top (--sat, --conn) measure at. linkedom lays nothing out, so the
   // element Workout.jsx sizes by them reports what the test says.
   const topBars = px => {
@@ -193,6 +200,16 @@ describe('the superset card after a rating', () => {
   it('does not scroll on mount when the row is on screen', async () => {
     await mount(superset(), 0, {}, () => rowsAt(400))
     expect(dom.Element.prototype.scrollIntoView).not.toHaveBeenCalled()
+  })
+
+  it('brings a row out from underneath the pinned workout header', async () => {
+    await mount(superset(), 0, {}, () => {
+      rowsAt(50); topBars(0)
+      dom.Element.prototype.getBoundingClientRect = function () {
+        return this.classList.contains('whdr') ? { top: 0, bottom: 100 } : { top: 50, bottom: 94 }
+      }
+    })
+    expect(dom.Element.prototype.scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' })
   })
   // Coming back to the session, or a fresh open, with the row below the fold.
   it('brings a row below the fold back on mount, as it always did', async () => {

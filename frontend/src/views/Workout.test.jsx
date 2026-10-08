@@ -124,7 +124,7 @@ function exercise(id, sets, extra = {}) {
 function workout(entries, cur = 0, overrides = {}) {
   const { active: activeOverrides = {}, ...stateOverrides } = overrides
   return {
-    unit: 'kg', restSec: 90, sound: false, effort: 'none', gifSize: 'full',
+    unit: 'kg', restSec: 90, sound: false, effort: 'none', gifSize: 'full', wc: { steppers: true },
     workouts: [], exWeights: {}, routines: [],
     active: { id: 'active', name: 'Test workout', start: Date.now(), cur, entries, ...activeOverrides },
     ...stateOverrides,

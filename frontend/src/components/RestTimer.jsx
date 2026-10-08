@@ -32,7 +32,7 @@ export function applyRestLeft(v, opened) {
   const now = ui.timer
   if (!now) { if (v > 0) ui.startRest(v); return }
   if (v <= 0) { ui.stopRest(); return }
-  if (now.ready) { ui.startRest(v, now.forIdx); return }
+  if (now.ready) { ui.startRest(v, now.forIdx, { kind: now.kind, forSet: now.forSet }); return }
   if (v !== now.left) ui.addRest(v - now.left)
 }
 

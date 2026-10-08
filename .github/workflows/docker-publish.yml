@@ -52,6 +52,7 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "VCS_REF=${GITHUB_SHA}" >> $GITHUB_OUTPUT
           echo "BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')" >> $GITHUB_OUTPUT
+          echo "APP_BUILD=${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
       - uses: docker/setup-qemu-action@v4
       - uses: docker/setup-buildx-action@v4
@@ -67,6 +68,7 @@ jobs:
         with:
           images: ghcr.io/${{ steps.repo.outputs.owner }}/opengym-${{ matrix.image }}
           tags: |
+            type=sha,prefix=sha-,format=long
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
             type=semver,pattern={{version}}
@@ -81,6 +83,7 @@ jobs:
             VERSION=${{ steps.version_meta.outputs.VERSION }}
             VCS_REF=${{ steps.version_meta.outputs.VCS_REF }}
             BUILD_DATE=${{ steps.version_meta.outputs.BUILD_DATE }}
+            APP_BUILD=${{ steps.version_meta.outputs.APP_BUILD }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

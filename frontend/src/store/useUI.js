@@ -14,8 +14,24 @@ import { accentValue } from '../lib/accent.js'
 // before the local timer completes. No-ops for guests / offline. The device id keeps the
 // timer this browser's own: a desktop tab finishing its rest on screen used to cancel the
 // alert the phone in the gym was waiting for, because the server held one timer per account.
-const pushRestTimer = sec => { if (useStore.getState().user) api('/api/push/rest-timer', { method: 'POST', body: JSON.stringify({ seconds: sec, deviceId: deviceId() }) }).catch(() => {}) }
-const cancelPushRestTimer = () => { if (useStore.getState().user) api('/api/push/rest-timer/cancel', { method: 'POST', body: JSON.stringify({ deviceId: deviceId() }) }).catch(() => {}) }
+// Keep cancellations and replacements in order. Otherwise a slow cancel can arrive after
+// the next start and remove its alert, or an old start can resurrect a cancelled countdown.
+let pushRestChain = Promise.resolve()
+const queuePushRest = endsAt => {
+  const user = useStore.getState().user
+  if (!user) return
+  const device = deviceId()
+  pushRestChain = pushRestChain.then(() => {
+    if (useStore.getState().user?.id !== user.id) return
+    const seconds = endsAt == null ? 0 : Math.round((endsAt - Date.now()) / 1000)
+    const cancel = seconds <= 0
+    return api('/api/push/rest-timer' + (cancel ? '/cancel' : ''), {
+      method: 'POST', body: JSON.stringify({ ...(cancel ? {} : { seconds }), deviceId: device }),
+    })
+  }).catch(() => {})
+}
+const pushRestTimer = endsAt => queuePushRest(endsAt)
+const cancelPushRestTimer = () => queuePushRest(null)
 
 // Books the end of a rest with whatever can announce it while the app is not looking: in the
 // Android app a native alarm and the countdown notification, everywhere else (and wherever that
@@ -24,13 +40,13 @@ const cancelPushRestTimer = () => { if (useStore.getState().user) api('/api/push
 // it is ten seconds between the two sides of a hold, and the app is in your hand.
 const bookRestEnd = (endsAt, totalSec, kind) => {
   const switching = kind === 'switch'
-  if (!MOBILE) { if (!switching) pushRestTimer(Math.max(1, Math.round((endsAt - Date.now()) / 1000))); return }
+  if (!MOBILE) { if (!switching) pushRestTimer(endsAt); return }
   const { S } = useStore.getState()
   armRestAlert(endsAt, { title: switching ? t('Switch sides') : t('Rest’s over. Next set!'), countdownTitle: switching ? t('Switch sides') : t('Rest'), totalSec, accent: accentValue(S), sound: !!S.sound, vibrate: S.vibrate !== false, alarmBuzz: S.vibrate !== false && !!S.vibrateOnSilent })
     .then(ok => {
       // Only for the rest that asked: one skipped or moved since then has booked its own end.
       const tm = useUI.getState().timer
-      if (!ok && !switching && tm && !tm.paused && !tm.ready && tm.endsAt === endsAt) pushRestTimer(Math.max(1, Math.round((endsAt - Date.now()) / 1000)))
+      if (!ok && !switching && tm && !tm.paused && !tm.ready && tm.endsAt === endsAt) pushRestTimer(endsAt)
     })
 }
 
@@ -209,7 +225,7 @@ export const useUI = create((set, get) => ({
   swipeHint: null,     // { idx, i, id }: the set row showing the one-time swipe hint (Workout.jsx)
   setFlash: null,      // { idx, i, id }: the set row a copy or an undo just brought, flashed once
   timer: null,         // rest countdown between sets — { left, total, endsAt, forIdx, ready?, paused?, kind? }
-                       // kind: 'switch' for the short pause between the two sides of a timed set
+                       // kind: 'switch' between sides of a timed set; 'manual' independent of a workout
                        // forIdx: index of the active entry whose set started the rest (undefined when unknown)
                        // forSet: index of that set in the entry's rows, so removing the set stops its rest
                        // paused: held at `left`; `endsAt` means nothing until resumeRest sets it again
@@ -281,9 +297,21 @@ export const useUI = create((set, get) => ({
     // with no beep, no vibration and no flash. Each timer starts from where the page is now.
     pageHiddenAt = document.hidden ? Date.now() : null
     const endsAt = Date.now() + sec * 1000
-    set({ timer: { left: sec, total: sec, endsAt, forIdx, ...(forSet != null ? { forSet } : {}), ...(kind === 'switch' ? { kind } : {}) } })
+    set({ timer: { left: sec, total: sec, endsAt, forIdx, ...(forSet != null ? { forSet } : {}), ...(['switch', 'manual'].includes(kind) ? { kind } : {}) } })
     bookRestEnd(endsAt, sec, kind)
     runRest(set, get)
+  },
+  // A manual rest is independent of any set or session. Automatic rests still replace it
+  // through startRest, and a timed set takes over through startWork. Never interrupt a hold
+  // just because a timer sheet was left open before that hold started.
+  startManualRest(sec) {
+    if (get().work || !Number.isFinite(sec) || sec <= 0) return false
+    get().startRest(Math.min(REST_MAX, Math.max(1, Math.round(sec))), undefined, { kind: 'manual' })
+    return true
+  },
+  resetRest() {
+    const tm = get().timer
+    if (tm) get().startRest(tm.total, tm.forIdx, { kind: tm.kind, forSet: tm.forSet })
   },
   // Holding the rest where it is — a longer break than planned, a machine to wait for, a phone
   // call (#193). Paused time does not count: the countdown stops, and so does everything that
@@ -316,7 +344,7 @@ export const useUI = create((set, get) => ({
   addRest(sec) {
     const tm = get().timer
     if (!tm) return
-    if (tm.ready) { if (sec > 0) get().startRest(Math.min(sec, REST_MAX), tm.forIdx, { forSet: tm.forSet }); else get().stopRest(); return }
+    if (tm.ready) { if (sec > 0) get().startRest(Math.min(sec, REST_MAX), tm.forIdx, { kind: tm.kind, forSet: tm.forSet }); else get().stopRest(); return }
     // +15 s stops where the wheel does (15:00), so the two never disagree about a rest's length.
     if (sec > 0) sec = Math.min(sec, Math.max(0, REST_MAX - tm.left))
     if (!sec) return
@@ -345,7 +373,7 @@ export const useUI = create((set, get) => ({
   followNativeRest({ endsAt, left, total, paused }) {
     const tm = get().timer
     const forIdx = tm?.forIdx
-    const kind = { ...(tm?.kind === 'switch' ? { kind: 'switch' } : {}), ...(tm?.forSet != null ? { forSet: tm.forSet } : {}) }
+    const kind = { ...(['switch', 'manual'].includes(tm?.kind) ? { kind: tm.kind } : {}), ...(tm?.forSet != null ? { forSet: tm.forSet } : {}) }
     if (paused) {
       stopRestTicking()
       set({ timer: { left, total, endsAt, forIdx, ...kind, paused: true } })
@@ -443,7 +471,7 @@ export const useUI = create((set, get) => ({
 // the bar's own tick at zero calls the push off as it always does. In the app the countdown
 // notification lives in the app's process and may be gone with it, so the end is booked again
 // there: the alarm has a fixed id and the new booking replaces the old one, it never adds a second.
-// A rest that ended meanwhile, or one left with no session running, is dropped.
+// A rest that ended meanwhile is dropped. Only manual rest can outlive its workout.
 export const REST_KEY = 'gym_rest'
 const restStore = () => { try { return typeof localStorage === 'undefined' ? null : localStorage } catch { return null } }
 const saveRest = tm => {
@@ -460,9 +488,9 @@ export function restoreRest(now = Date.now()) {
   try { saved = JSON.parse(ss?.getItem(REST_KEY) || 'null') } catch { saved = null }
   if (!saved || useUI.getState().timer) return false
   const total = Math.round(Number(saved.total))
-  const ok = useStore.getState().S?.active && total > 0 && (saved.paused ? saved.left > 0 : saved.endsAt > now)
+  const ok = (saved.kind === 'manual' || useStore.getState().S?.active) && total > 0 && (saved.paused ? saved.left > 0 : saved.endsAt > now)
   if (!ok) { try { ss.removeItem(REST_KEY) } catch { /* nothing to drop */ } return false }
-  const base = { total, forIdx: saved.forIdx ?? undefined, ...(saved.forSet != null ? { forSet: saved.forSet } : {}), ...(saved.kind === 'switch' ? { kind: 'switch' } : {}) }
+  const base = { total, forIdx: saved.forIdx ?? undefined, ...(saved.forSet != null ? { forSet: saved.forSet } : {}), ...(['switch', 'manual'].includes(saved.kind) ? { kind: saved.kind } : {}) }
   if (saved.paused) {
     useUI.setState({ timer: { ...base, left: Math.round(saved.left), endsAt: saved.endsAt, paused: true } })
     if (MOBILE) holdRestAlert(Math.round(saved.left), total)

@@ -820,6 +820,19 @@ body.chips-dragging *{cursor:inherit}
    one-line ellipsis cut exactly the 0/19 the line is there for. */
 .whdr-mid .sub{font-size:13px;margin-top:1px;font-variant-numeric:tabular-nums;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere;text-wrap:balance}
 .btn.pill.whdr-finish{width:auto;flex:none;padding:8px 16px;border-radius:99px;font-size:15px;max-width:40%}
+.workout-tools{display:flex;flex:none;align-items:center;border-radius:99px;background:var(--surface-2);padding:2px;gap:2px}
+.rest-timer-button.active{color:var(--acc);background:var(--acc-soft)}
+.manual-rest-current{padding:14px;border-radius:var(--r-lg);background:var(--surface-2);margin:16px 0}
+.manual-rest-current strong{font-size:26px;font-variant-numeric:tabular-nums}
+.manual-rest-current>.row+.row{margin-top:12px;gap:8px}
+.rest-presets{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;margin:18px 0 8px}
+.rest-presets .chip{flex:1;text-align:center;justify-content:center;min-height:44px;font-variant-numeric:tabular-nums}
+.manual-rest-sheet .dw-read{margin-top:8px}
+@media(max-width:374px){
+  .hdr.whdr-bar{gap:4px}
+  .btn.pill.whdr-finish{padding-inline:10px;font-size:14px}
+  .workout-tools{gap:0;padding:0}
+}
 /* Animations set to Small: the picture beside the exercise name, with an expand badge. */
 .wthumb{position:relative;flex:none;width:48px;height:48px;border-radius:10px;overflow:hidden;padding:0}
 .wthumb .thumb{width:48px;height:48px;border-radius:10px}
@@ -1775,6 +1788,14 @@ body.no-tabbar.resting #toast{bottom:calc(100px + var(--sab))}
    the session name wraps; the fallback is the height of a one-line header. */
 .wl-unit{scroll-margin-top:calc(var(--whdr-h, var(--sat) + var(--conn) + 80px) + 16px)}
 .wl-unit.cur{box-shadow:inset 0 0 0 1.5px var(--acc-line)}
+.workout-focus .workout-list{gap:22px}
+.workout-focus .wl-unit{border-radius:24px;padding:16px 14px 8px;background:var(--surface)}
+.workout-focus .wl-unit.cur{box-shadow:none}
+.workout-focus .exhd{padding-block:4px 12px;border-bottom:var(--hair) solid var(--sep)}
+.workout-focus .wl-unit>.card,.workout-focus .ss-ex>.card{background:transparent;border-radius:0;padding:12px 0;box-shadow:none}
+.workout-focus .setrow{padding-block:12px}
+.workout-focus .setrow .stp.plain{background:var(--surface-2);min-height:44px}
+.workout-focus .wl-hd{margin-bottom:6px}
 .wl-hd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
 /* part of the give-back above — one edge for all three insets of a row in the list view */
 @media (max-width:404px){
