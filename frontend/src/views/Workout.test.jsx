@@ -1582,11 +1582,11 @@ describe('workout compact view', () => {
     expect(container.querySelector('[data-testid="workout-swipe-surface"]')).toBeNull()
     expect(units().length).toBe(2)
     expect(container.querySelectorAll('[role="checkbox"]').length).toBe(3)
-    // The unit header and its "Set current" chip are part of list mode, kept in compact.
-    expect(units()[0].textContent).toContain('Current')
+    // Compact keeps focus in the exercise menu instead of repeating a toolbar on every card.
+    expect(units()[0].querySelector('.wl-hd')).toBeNull()
   })
 
-  it('strips the progression line, tags and last-time recap that list mode shows', async () => {
+  it('keeps previous performance accessible while removing progression and decorative tags', async () => {
     const state = {
       workoutView: 'compact',
       exWeights: { 'plain-bench': { w: 80 } },
@@ -1596,7 +1596,9 @@ describe('workout compact view', () => {
 
     expect(container.querySelector('.progline')).toBeNull()
     expect(container.textContent).not.toContain('Best:')
-    expect(container.textContent).not.toContain('Last time')
+    expect(container.querySelector('.workout-previous').textContent).toContain('Last time')
+    await act(async () => { container.querySelector('.workout-previous').click() })
+    expect(mocks.exerciseHistorySheet).toHaveBeenCalledWith('plain-bench')
     // The sets card and the ⋯ menu button survive — nothing is truly unreachable.
     expect(container.querySelector('.setrow')).toBeTruthy()
     expect(container.querySelector('button[aria-label="More"]')).toBeTruthy()
@@ -1703,7 +1705,7 @@ describe('workout view header menu', () => {
     const menu = await openMenu()
     expect(menu.sections.map(g => g.title)).toEqual([undefined, 'Add', 'This workout', undefined])
     expect(menuItemsOf(menu).map(it => it.label)).toEqual([
-      'Workout settings', 'Add exercise', 'Add routine', 'Rename workout', 'Layout', 'Add session note', 'Don’t count for progression', 'Discard workout',
+      'Workout settings', 'Simplify screen', 'Add exercise', 'Add routine', 'Rename workout', 'Layout', 'Add session note', 'Don’t count for progression', 'Discard workout',
     ])
     expect(item(menu, 'Workout settings').sub).toBe('1:30 rest · Silent')
     expect(item(menu, 'Discard workout').danger).toBe(true)
@@ -1727,6 +1729,20 @@ describe('workout view header menu', () => {
 
     expect(mocks.S.active.workoutView).toBe('compact')
     expect(mocks.S.workoutView).toBe('cards')
+  })
+
+  it('simplifies existing workout preferences without changing logged values', async () => {
+    await mount([exercise('plain-bench', [true, false])], 0, {
+      workoutView: 'cards',
+      wc: { steppers: true, setShortcuts: true, pairButtons: true, exerciseButtons: true, swipe: false },
+      active: { workoutView: 'list', routineIds: [] },
+    })
+    const entries = structuredClone(mocks.S.active.entries)
+    await act(async () => { item(await openMenu(), 'Simplify screen').onClick() })
+    expect(mocks.S.workoutView).toBe('compact')
+    expect(mocks.S.active.workoutView).toBeUndefined()
+    expect(mocks.S.wc).toMatchObject({ steppers: false, setShortcuts: false, pairButtons: false, exerciseButtons: false, swipe: false })
+    expect(mocks.S.active.entries).toEqual(entries)
   })
 })
 

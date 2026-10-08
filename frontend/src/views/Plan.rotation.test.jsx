@@ -48,7 +48,7 @@ const baseS = over => ({ routines, week: { 1: ['c'] }, dayPlan: {}, workouts: []
 
 let host, root
 beforeEach(() => {
-  localStorage.removeItem('gym_plan_view')
+  localStorage.setItem('gym_plan_view', 'schedule')
   host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host)
   menuSheet.mockClear(); confirmSheet.mockClear(); mocks.nav = vi.fn()
 })
@@ -338,15 +338,14 @@ describe('Plan — Schedule extras', () => {
 
   it('switches to Routines and remembers it for next time', () => {
     mount()
-    const seg = label => [...host.querySelectorAll('.plan-views button')].find(b => b.textContent === label)
-    click(seg('Routines'))
+    click(host.querySelector('.plan-back'))
     expect(localStorage.getItem('gym_plan_view')).toBe('routines')
     expect(host.querySelector('.plan-mode')).toBe(null)
     expect(host.querySelector('.plan-routines')).toBeTruthy()
     act(() => root.unmount()); root = createRoot(host)
     act(() => root.render(<Plan />))
-    expect(seg('Routines').className).toContain('on')
-    click(seg('Schedule'))
+    expect(host.querySelector('h1').textContent).toBe('Routines')
+    click(host.querySelector('.plan-schedule-entry'))
     expect(localStorage.getItem('gym_plan_view')).toBe('schedule')
     expect(host.querySelector('.plan-mode')).toBeTruthy()
   })

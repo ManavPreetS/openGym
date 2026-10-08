@@ -1,0 +1,40 @@
+/* Give the session name its own line, so the timer and Finish never compete with it. */
+.workout-screen .whdr-bar{gap:8px;margin-bottom:14px}
+.workout-screen .whdr-bar>.iconbtn{width:40px;height:40px}
+.workout-screen .whdr-mid{text-align:start;padding-inline-start:4px}
+.workout-screen .whdr-mid .sub{font-size:16px;color:var(--label-2)}
+.workout-screen .whdr-finish{min-height:40px}
+.workout-title{display:flex;align-items:baseline;gap:16px;justify-content:space-between;margin:4px 0 14px}
+.workout-title h1{font-size:27px;line-height:1.15;letter-spacing:-.035em;font-weight:700;overflow-wrap:anywhere;min-width:0}
+.workout-title>span{font-size:12px;color:var(--label-2);flex:none}
+.workout-screen .whdr .wprog{height:3px;margin-bottom:20px;background:var(--surface-2)}
+.workout-focus .workout-list{gap:18px}
+.workout-focus .wl-unit{border-radius:22px;padding:14px 16px 4px;background:var(--surface)}
+.workout-focus .exhd{gap:8px;padding:0 0 12px;border-bottom:var(--hair) solid var(--sep)}
+.workout-focus .exhd .iconbtn{background:transparent;color:var(--acc);width:36px;height:40px}
+.exercise-set-count{font-size:12px;color:var(--label-2);font-variant-numeric:tabular-nums;margin-inline:2px 6px}
+.workout-focus .exercise-sets{margin-top:8px!important;padding-block:8px!important}
+.workout-focus .planline{font-size:11px;color:var(--label-2);margin-top:7px}
+.workout-previous{display:grid;grid-template-columns:minmax(0,1fr) 14px;gap:4px 8px;width:100%;text-align:start;margin:7px 0 0;padding:4px 0;color:var(--label-2)}
+.workout-previous>span{font-size:11px;grid-column:1}
+.workout-previous>strong{font-size:13px;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;grid-column:1;grid-row:2}
+.workout-previous>.icn{grid-column:2;grid-row:1 / 3;align-self:center;font-size:11px;color:var(--label-3)}
+.workout-previous:active{color:var(--acc)}
+.workout-focus .sethead{font-size:11px;letter-spacing:.025em;color:var(--label-2);padding-bottom:5px}
+.workout-focus .setrow{padding-block:10px;border-bottom:var(--hair) solid var(--sep-op)}
+.workout-focus .setrow .stp.plain{min-height:44px;border-radius:10px;background:var(--surface-2)}
+.workout-focus .setrow .stp.plain input{font-size:19px;font-weight:600}
+.workout-focus .setrow.done .stp.plain{background:var(--acc-soft)}
+.workout-focus .workout-add-set{justify-content:flex-start;min-height:44px;padding-inline:0;color:var(--acc);font-size:15px;font-weight:550}
+.workout-focus .ss-card{background:transparent;box-shadow:none;padding:0}
+.workout-focus .ss-hd{font-size:11px;text-align:start;line-height:1.4}
+.workout-focus .ss-amp{margin-block:16px 12px}
+.workout-screen>.btn{margin-top:10px}
+@media(max-width:359px){
+  .workout-focus .wl-unit{padding-inline:12px}
+  .workout-title{gap:10px}
+  .workout-title h1{font-size:24px}
+  .workout-title>span{font-size:11px}
+  .workout-screen .whdr-bar{gap:4px}
+  .workout-screen .whdr-mid .sub{font-size:14px}
+}

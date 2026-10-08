@@ -41,7 +41,7 @@ vi.mock('../sheets.jsx', () => ({
 let host, root
 beforeEach(() => {
   vi.clearAllMocks()
-  localStorage.removeItem('gym_plan_view')
+  localStorage.setItem('gym_plan_view', 'schedule')
   mocks.coach = false
   mocks.nav = vi.fn()
   mocks.S = {

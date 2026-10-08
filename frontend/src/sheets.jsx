@@ -15,6 +15,8 @@ import { buildStarterPlan, starterPlanDays, starterPlanOptions } from './lib/sta
 import Media, { Thumb } from './components/Media.jsx'
 import CustomMediaField from './components/CustomMediaField.jsx'
 import WorkoutMediaSection, { workoutMediaCount } from './components/WorkoutMedia.jsx'
+import RecordedSets from './components/RecordedSets.jsx'
+import './views/history.css'
 import { mediaOf, normalizeMediaRef, cleanUrl, workoutMediaOf } from './lib/media-refs.js'
 import { syncMedia } from './lib/media-sync.js'
 import LineChart from './components/LineChart.jsx'
@@ -2188,14 +2190,12 @@ function WorkoutDetail({ w, close }) {
   // curve it sits on, which is the question a past workout raises most often.
   const entryRow = (e, i) => {
     const ex = EXIDX[e.id]
-    return <div key={i} className="row wd-ex" style={{ alignItems: 'flex-start' }} {...tappable(() => exerciseHistorySheet(e.id))}>
-      {ex && <Thumb ex={ex} />}
-      <div className="grow"><div className={`tt ${exerciseNameClass(ex)}`} style={{ fontWeight: 600 }}>{nameOf(e)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</div>
-        <div className="ss">{e.sets.filter(hasCompletedWork).map(s => setLabel(e.id, s, e.target, speedUnitOf(st))).join('  ·  ') || t('no sets')}</div>
-        {e.note && <div className="small dim" style={{ marginTop: 3 }}>
+    return <div key={i} className="wd-ex" {...tappable(() => exerciseHistorySheet(e.id))}>
+      <div className="grow"><div className="workout-record-ex-title"><span className={`tt ${exerciseNameClass(ex)}`}>{nameOf(e)} {w.prs && w.prs.includes(e.id) && <span className="pr"><Icon name="trophy" />PR</span>}</span><Icon name="chevronRight" className="chev" /></div>
+        <RecordedSets entry={e} unit={st.unit} speedUnit={speedUnitOf(st)} />
+        {e.note && <div className="workout-record-ex-note">
           {e.notePin && <Icon name="pin" style={{ fontSize: 12, marginInlineEnd: 4, verticalAlign: '-1px', color: 'var(--yellow)' }} />}{e.note}
         </div>}</div>
-      <Icon name="chevronRight" className="chev" style={{ alignSelf: 'center' }} />
     </div>
   }
   // Exercises done as a superset stay together under a "Superset" label and one bar, the way the
@@ -2219,9 +2219,20 @@ function WorkoutDetail({ w, close }) {
   // anywhere) renders flat.
   const groups = sessionSections(w.entries)
   const grouped = groups.length > 1 || (groups[0] && groups[0].rid && (w.routineIds || []).length > 1)
-  return <>
-    <h3>{w.name}</h3>
-    <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(w.d, true), ...durPart(w.end - w.start), fmtVol(w.vol, st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
+  const clock = timestamp => new Date(timestamp).toLocaleTimeString(dateLocale(), { hour: 'numeric', minute: '2-digit' })
+  const duration = durPart(w.end - w.start)[0]
+  return <div className="workout-record">
+    <div className="workout-record-header row between"><div><h3>{w.name}</h3><div className="muted small">{fmtDate(workoutDay(w) || w.d, true, true)}</div></div><Button size="sm" variant="ghost" onClick={close}>{t('Done')}</Button></div>
+    <dl className="workout-record-facts">
+      {duration && <div><dt>{t('Duration')}</dt><dd>{duration}</dd></div>}
+      <div><dt>{t('Sets')}</dt><dd>{setsDone(w)}</dd></div>
+      <div><dt>{t('Volume')}</dt><dd>{fmtVol(w.vol ?? workoutVolume(w), st.unit)}</dd></div>
+    </dl>
+    {(w.start > 0 || w.end > 0 || w.bw > 0) && <dl className="workout-record-meta">
+      {w.start > 0 && <div><dt>{t('Start time')}</dt><dd>{clock(w.start)}</dd></div>}
+      {w.end > w.start && <div><dt>{t('End time')}</dt><dd>{clock(w.end)}</dd></div>}
+      {w.bw > 0 && <div><dt>{t('Body weight')}</dt><dd>{fmtNum(w.bw)} {st.unit}</dd></div>}
+    </dl>}
     {grouped ? groups.map(g => {
       const r = g.rid ? st.routines.find(x => x.id === g.rid) : null
       const items = g.items.map(i => w.entries[i])
@@ -2238,12 +2249,17 @@ function WorkoutDetail({ w, close }) {
       </div>
     }) : entryRows(groups[0]?.units || [])}
     {/* Progress photos and form-check videos: added and removed right here, on the saved record. */}
-    <WorkoutMediaSection w={w} />
-    <div className="small muted" style={{ margin: '4px 0 6px' }}>{t('Session note')}</div>
-    <textarea ref={noteRef} className="input" rows={2} maxLength={NOTE_MAX} value={note}
-      placeholder={t('How the session went as a whole.')}
-      onFocus={onNoteFocus} onChange={e => setNote(e.target.value)} onBlur={saveNote} />
-    <div style={{ height: 14 }} />
+    {workoutMediaCount(w) > 0 && <WorkoutMediaSection w={w} />}
+    {note && <div className="workout-record-note"><div className="small muted">{t('Session note')}</div><p>{note}</p></div>}
+    <details className="workout-record-options">
+    <summary><Icon name="more" />{t('Workout options')}<Icon name="chevronDown" className="chev" /></summary>
+    <div className="workout-record-options-body">
+    <label className="small muted" style={{ display: 'block', margin: '4px 0 6px' }}>{t('Session note')}
+      <textarea ref={noteRef} className="input" rows={2} maxLength={NOTE_MAX} value={note}
+        placeholder={t('How the session went as a whole.')}
+        onFocus={onNoteFocus} onChange={e => setNote(e.target.value)} onBlur={saveNote} />
+    </label>
+    {workoutMediaCount(w) === 0 && <WorkoutMediaSection w={w} />}
     {st.active && <p className="small muted">{t('Finish the current workout first.')}</p>}
     {/* The editor starts from the record as it is, so a note typed here goes in first — the same
         flush the date row does, and the unmount hook then has nothing left to write over it. */}
@@ -2291,7 +2307,8 @@ function WorkoutDetail({ w, close }) {
     {/* Matched the way the edits above are, not by id: a workout from before ids has none, and
         filtering on `x.id !== undefined` took every other one of them with it. */}
     <Button variant="danger" onClick={() => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.') + mediaGoesToo(S().workouts.find(x => sameWorkout(x, w))), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => { s.workouts = s.workouts.filter(x => !sameWorkout(x, w)) }); close(); toast(t('Workout deleted')) } })}>{t('Delete workout')}</Button>
-  </>
+    </div></details>
+  </div>
 }
 // The sentence a workout's Delete adds when its photos and videos go with it — every file the
 // record lists, shown or not. Empty when it has none.

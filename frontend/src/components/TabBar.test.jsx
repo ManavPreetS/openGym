@@ -8,9 +8,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import TabBar from './TabBar.jsx'
 import { DEF, useStore } from '../store/useStore.js'
 
+const routing = vi.hoisted(() => ({ nav: vi.fn(), pathname: '/home' }))
 vi.mock('react-router-dom', () => ({
-  useNavigate: () => () => {},
-  useLocation: () => ({ pathname: '/home' }),
+  useNavigate: () => routing.nav,
+  useLocation: () => ({ pathname: routing.pathname }),
 }))
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -18,6 +19,8 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true
 let host, root, originalS, originalUser
 
 beforeEach(() => {
+  routing.pathname = '/home'
+  routing.nav.mockClear()
   const store = useStore.getState()
   originalS = store.S
   originalUser = store.user
@@ -88,12 +91,21 @@ describe('the tab icons and labels', () => {
   const label = el => el.querySelector('span:last-child').textContent
   it('labels every tab and uses one icon per concept', () => {
     act(() => { root.render(<TabBar onStart={() => {}} />) })
-    expect(tabs().map(icon)).toEqual(['house', 'calendar', 'play', 'chart', 'dumbbell'])
-    expect(tabs().map(label)).toEqual(['Home', 'Plan', 'Start', 'Stats', 'Exercises'])
+    expect(tabs().map(icon)).toEqual(['house', 'clipboard', 'play', 'history', 'chart'])
+    expect(tabs().map(label)).toEqual(['Home', 'Routines', 'Start', 'Log', 'Stats'])
 
     act(() => { useStore.getState().update(s => { s.active = { id: 'a', entries: [], cur: 0 } }, false) })
     expect(icon(tabs()[2])).toBe('play')
     expect(label(tabs()[2])).toBe('Resume')
+  })
+
+  it('opens the workout log directly and marks its own tab as active', () => {
+    routing.pathname = '/history'
+    act(() => { root.render(<TabBar onStart={() => {}} />) })
+    expect(tabs()[3].getAttribute('aria-current')).toBe('page')
+    expect(tabs()[4].getAttribute('aria-current')).toBeNull()
+    act(() => tabs()[3].click())
+    expect(routing.nav).toHaveBeenCalledWith('/history')
   })
 
   it('shows a minimized session’s running time, still named Resume', () => {

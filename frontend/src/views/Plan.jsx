@@ -9,6 +9,7 @@ import {
   planHasRoutines, exportPlanFile, printWholePlan, importPlanFile,
 } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
+import './plan.css'
 import { Button, Row, Section, Segmented } from '../components/ui.jsx'
 import SwipeRow from '../components/SwipeRow.jsx'
 import { copyRoutine, deleteRoutine, restoreRoutine, routineSnapshot } from '../lib/routines.js'
@@ -27,12 +28,11 @@ import {
   chooseRotation, chooseFixedWeek,
 } from '../lib/rotation.js'
 
-// Plan has two views (v1.3.11): Schedule (how you train, and when) and Routines (what you
-// train). The last one you looked at comes back: a per-device convenience, never synced, so it
-// lives in this browser's storage and not in S.
+// Routine selection is the primary view. Scheduling is a secondary screen, reached from the
+// list footer. Remember an explicit choice on this device; first visits open the routine list.
 export const PLAN_VIEW_KEY = 'gym_plan_view'
 const readView = () => {
-  try { return localStorage.getItem(PLAN_VIEW_KEY) === 'routines' ? 'routines' : 'schedule' } catch { return 'schedule' }
+  try { return localStorage.getItem(PLAN_VIEW_KEY) === 'schedule' ? 'schedule' : 'routines' } catch { return 'routines' }
 }
 
 /* Undo for Plan's two removals (v1.3.11). Both go through the store's normal update, so sync
@@ -161,16 +161,27 @@ export default function Plan() {
   const mode = scheduleModeOf(S)
 
   return <div className="narrow plan">
+    {view === 'schedule' && <button className="plan-back" onClick={() => setView('routines')}>
+      <Icon name="chevronLeft" />{t('Routines')}
+    </button>}
     <div className="hdr">
-      <div><h1>{t('Plan')}</h1><div className="sub">{mode === 'rotation' ? t('Your routines in a loop') : t('Your weekly routine')}</div></div>
-      <button className="iconbtn" onClick={openMenu} aria-label={t('Plan options')} title={t('Plan options')}><Icon name="share" /></button>
+      <div><h1>{view === 'routines' ? t('Routines') : t('Schedule')}</h1>
+        <div className="sub">{view === 'routines' ? routineCount(S.routines.length)
+          : mode === 'rotation' ? t('Your routines in a loop') : t('Your weekly routine')}</div>
+      </div>
+      <button className="iconbtn" onClick={openMenu} aria-label={t('Plan options')} title={t('Plan options')}><Icon name="more" /></button>
     </div>
     <input ref={fileRef} type="file" accept="application/json,.json" onChange={pickFile} hidden />
-    <Segmented className="plan-views" value={view} onChange={setView}
-      options={[{ value: 'schedule', label: t('Schedule') }, { value: 'routines', label: t('Routines') }]} />
-    {view === 'routines'
-      ? <Routines S={S} update={update} nav={nav} />
-      : <Schedule S={S} update={update} nav={nav} mode={mode} />}
+    {view === 'routines' ? <>
+      <Routines S={S} update={update} nav={nav} />
+      <button className="plan-schedule-entry" onClick={() => setView('schedule')}>
+        <Icon name="calendar" />
+        <span className="grow"><span>{t('Schedule')}</span>
+          <span className="small dim">{mode === 'rotation' ? t('Your routines in a loop') : t('Your weekly routine')}</span>
+        </span>
+        <Icon name="chevronRight" className="chev" />
+      </button>
+    </> : <Schedule S={S} update={update} nav={nav} mode={mode} />}
   </div>
 }
 
@@ -428,14 +439,12 @@ function Routines({ S, update, nav }) {
         ? <div className="list routine-list plan-routines is-editing" ref={reorder.listRef}>{routines.map((r, i) =>
           <div key={r.id} data-reorder-row className="item plan-routine" style={reorder.rowStyle(i)}>
             <button className="plan-minus" aria-label={t('Delete {0}', r.name)} title={t('Delete routine')} onClick={() => remove(r)}><Icon name="minus" /></button>
-            <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
             <div className="grow"><div className="tt">{r.name}</div><div className="ss">{sub(r)}</div></div>
             {routines.length > 1 && <button className="plan-handle" aria-label={t('Move {0}', r.name)} title={t('Drag to reorder')}
               {...reorder.handle(i)}><Icon name="chevronsUpDown" /></button>}
           </div>)}</div>
         : <div className="list routine-list plan-routines">{routines.map(r => {
           const row = <div key={r.id} className="item plan-routine" {...tappable(() => nav('/plan/r/' + r.id))}>
-            <span className="lrow-i"><Icon name={glyphOf(r.emoji)} /></span>
             <div className="grow"><div className="tt">{r.name}</div><div className="ss">{sub(r)}</div></div>
             <Icon name="chevronRight" className="chev" /></div>
           // Swipe (v1.3.11, Settings → Swipe actions): toward the start deletes with an Undo,
@@ -447,7 +456,7 @@ function Routines({ S, update, nav }) {
               flash={flash?.id === r.id ? flash.n : 0}>{row}</SwipeRow>
             : row
         })}</div>}
-      <p className="sect-f">{edit ? t('Drag to reorder. Tap the minus to delete.') : t('Tap a routine to edit it. Reorder and delete are behind Edit.')}</p>
+      {edit && <p className="sect-f">{t('Drag to reorder. Tap the minus to delete.')}</p>}
     </> : <>
       <div className="empty"><div className="ico"><Icon name="clipboard" /></div>{t('No routines yet.')}<br />{t('Make one, or grab the starter plan to get going.')}</div>
       <Button icon="clipboard" onClick={starterPlanSheet}>{t('Load starter plan')}</Button>

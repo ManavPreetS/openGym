@@ -61,6 +61,28 @@ describe('plan-share units', () => {
 })
 
 describe('what survives a shared plan', () => {
+  it.each(['plan', 'last', 'lastWorkout'])('preserves the routine starting-values override %s through export and import', startFrom => {
+    const source = stateWith({})
+    source.routines[0].startFrom = startFrom
+    const bundle = parsePlan(JSON.stringify(buildPlanBundle(source, 'Plan')))
+    const target = { routines: [], week: {}, customEx: [] }
+    expect(bundle.routines[0].startFrom).toBe(startFrom)
+    mergePlan(target, bundle)
+    expect(target.routines[0].startFrom).toBe(startFrom)
+  })
+
+  it('keeps absent and unknown starting-values choices out of shared routines', () => {
+    const source = stateWith({})
+    expect(buildPlanBundle(source, 'Plan').routines[0].startFrom).toBeUndefined()
+    source.routines[0].startFrom = 'unknown'
+    expect(buildPlanBundle(source, 'Plan').routines[0].startFrom).toBeUndefined()
+    const bundle = buildPlanBundle(source, 'Plan')
+    bundle.routines[0].startFrom = 'unknown'
+    const target = { routines: [], week: {}, customEx: [] }
+    mergePlan(target, parsePlan(bundle))
+    expect(target.routines[0].startFrom).toBeUndefined()
+  })
+
   it('carries Per side on a timed hold, and on reps work; never on cardio', () => {
     const hold = roundTrip({ mode: 'time', sec: 30, sets: 2, reps: undefined, weight: undefined, side: true })
     expect(hold).toMatchObject({ mode: 'time', sec: 30, sets: 2, side: true })

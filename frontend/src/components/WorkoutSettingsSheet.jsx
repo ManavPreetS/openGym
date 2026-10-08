@@ -10,6 +10,7 @@ import { closeThenNav } from '../lib/nav.js'
 import { REST_MAX, fmtRest } from '../lib/duration.js'
 import { durationSheet } from './DurationWheel.jsx'
 import { Section, Row, Switch, Segmented, Button } from './ui.jsx'
+import StartingValuesRow from './StartingValuesRow.jsx'
 
 // The settings people touch at the gym, without leaving the workout (v1.3.11, opened from the
 // workout's ⋯ → Workout settings). Every row writes the same S.* field as Settings → Workout and
@@ -56,6 +57,7 @@ export function WorkoutSettings({ close }) {
       </Row>}
     </Section>
     <Section>
+      <StartingValuesRow state={S} onChange={v => update(s => { s.startFrom = v })} />
       <Row icon="layout" iconTint="var(--blue)" title={t('Layout')}>
         <Segmented className="seg-inline"
           options={[{ value: 'cards', label: t('Cards') }, { value: 'list', label: t('List') }, { value: 'compact', label: t('Compact') }]}

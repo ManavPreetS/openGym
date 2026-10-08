@@ -53,6 +53,7 @@ globalThis.__APP_VERSION__ ??= 'test'
 
 let host, root
 beforeEach(() => {
+  localStorage.setItem('gym_plan_view', 'schedule')
   mocks.S = {
     unit: 'kg', restSec: 90, restPauseSec: 15, sound: false, effort: 'none',
     gifSize: 'full', workouts: [], routines: [], exWeights: {}, week: {}, dayPlan: {},

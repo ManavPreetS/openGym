@@ -31,6 +31,7 @@ import { forgetCoach } from '../lib/coach-api.js'
 import { REST_MAX, REST_PAUSE_MIN, REST_PAUSE_MAX, fmtRest, fmtDuration } from '../lib/duration.js'
 import { starterPlanSheet, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet, plateInventorySheet, menuSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
+import StartingValuesRow from '../components/StartingValuesRow.jsx'
 import { durationSheet } from '../components/DurationWheel.jsx'
 import { showsConnection } from '../components/SyncBanner.jsx'
 import BackupFolderRow, { useBackupFolder, autoBackupSubtitle } from '../components/BackupFolderRow.jsx'
@@ -447,6 +448,9 @@ export default function Settings({ page = null, find = null, via = null }) {
 
   const pages = {
     workout: () => <>
+      <Section title={t('Progression')}>
+        <StartingValuesRow state={S} onChange={v => update(s => { s.startFrom = v })} />
+      </Section>
       <Section title={t('Rest')} footer={t('Each exercise can have its own rest too. Set it in the exercise settings of a routine.')}>
         {restRow}
         {restPauseRow}
@@ -516,12 +520,7 @@ export default function Settings({ page = null, find = null, via = null }) {
               the routine is what you said you would do, and history and progression decide the
               weight. The other choice is the old behaviour, reps carried over from last time.
               Absent (an older profile) reads as the plan. */}
-          <SelectRow icon="clipboard" iconTint="var(--green)" title={t('Planned sessions start from')}
-            value={S.startFrom === 'last' ? 'last' : 'plan'} onChange={v => update(s => { s.startFrom = v })}
-            options={[
-              { value: 'plan', label: t('Your plan'), subtitle: t('The routine’s sets and reps. Your history decides the weight.') },
-              { value: 'last', label: t('Your last session'), subtitle: t('The reps you logged last time in that routine, carried over.') },
-            ]} />
+          <StartingValuesRow state={S} onChange={v => update(s => { s.startFrom = v })} />
           <Row icon="stopwatch" iconTint="var(--orange)" title={t('Keep timing after target')}
             subtitle={t('Timed sets continue up to 15 extra minutes. Tap Done to log the actual duration.')}>
             <Switch aria-label={t('Keep timing after target')} checked={!!S.timedSetOvertime}

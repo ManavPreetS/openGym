@@ -69,7 +69,7 @@ afterEach(() => {
   host.remove()
 })
 
-const mount = () => act(() => root.render(<Settings page="advanced" />))
+const mount = () => act(() => root.render(<Settings page="workout" />))
 const row = () => [...host.querySelectorAll('.lrow')].find(r => r.textContent.includes('Planned sessions start from'))
 const choose = label => {
   act(() => { row().click() })
@@ -89,16 +89,22 @@ describe('Settings — planned sessions start from', () => {
   it('reads an older profile without the setting as the plan', () => {
     mount()
     expect(row()).toBeTruthy()
-    expect(row().textContent).toContain('Your plan')
+    expect(row().textContent).toContain('Plan + progression')
   })
 
   it('switches to the last session and back, writing startFrom to the store', () => {
     mount()
-    choose('Your last session')
-    expect(mocks.S.startFrom).toBe('last')
+    choose('Last workout')
+    expect(mocks.S.startFrom).toBe('lastWorkout')
     mount()
-    expect(row().textContent).toContain('Your last session')
-    choose('Your plan')
+    expect(row().textContent).toContain('Last workout')
+    choose('Plan + progression')
     expect(mocks.S.startFrom).toBe('plan')
+  })
+
+  it('keeps the older reps-only option available without presenting it as exact last-workout values', () => {
+    mocks.S.startFrom = 'last'
+    mount()
+    expect(row().textContent).toContain('Last reps + progression')
   })
 })

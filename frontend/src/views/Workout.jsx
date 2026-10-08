@@ -28,6 +28,7 @@ import { effortColor } from '../lib/effort.js'
 import Elapsed from '../components/Elapsed.jsx'
 import Icon from '../components/Icon.jsx'
 import RestTimerButton from '../components/ManualRestTimer.jsx'
+import './workout.css'
 import { Button, Check, NumberField } from '../components/ui.jsx'
 import { defaultIncrement, weightIncrement, stepWeight } from '../lib/progression.js'
 import { progressionGuidance } from '../lib/progression-copy.js'
@@ -90,15 +91,14 @@ const RTL_LETTER = /[֐-ࣿיִ-﷿ﹰ-﻿]/
 
 /* ---------- one exercise block (reps: weight×reps · time: a held duration · cardio: duration+speed) ---------- */
 // `compact` shrinks the block for a superset member; `dense` (compact view) goes further and
-// drops everything that is not a set you are logging — media, tag chips, the note lines, the
-// "last time" recap and the progression line — leaving the name, the ⋯ menu, the one-line plan
-// the rows are measured against, and the sets.
+// keeps logging focused on the name, previous performance, one-line plan and set rows.
+// Media, tag chips, notes and detailed progression controls live on the ⋯ menu.
 // Nothing dropped is lost: it is all still on the ⋯ menu, or one ⋮ switch back to list/cards.
 // The pause between the left and the right side of one timed per-side set (owner's call): long
 // enough to turn over, far shorter than the rest the set earns once both sides are held.
 const SWITCH_SIDES_SEC = 10
 
-function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSide, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onCopySetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onRest, onNoProg, routineUpdate, onSwap, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onRemoveExercise, busy }) {
+function ExerciseBlock({ entryIdx, compact, dense, editing, onFocus, onToggle, onToggleSide, onField, onAddSet, onRemoveSet, onAddWarmup, onRemoveSetAt, onCopySetAt, onStartTimed, onPairPrev, onPairNext, onSetRowRef, onProgressionSettings, onRest, onNoProg, routineUpdate, onSwap, onMoveUp, onMoveDown, canMoveUp, canMoveDown, onRemoveExercise, busy }) {
   const S = useStore(s => s.S)
   const update = useStore(s => s.update)
   const working = useUI(s => s.work)
@@ -212,7 +212,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       : today.reps == null || (planned.repsMin > 0 ? today.reps >= planned.repsMin && today.reps <= planned.reps : today.reps === planned.reps)
     const note = todaySets !== (planned.sets || 1) || !inPlan
       ? t('today {0}', setsRepsOf({ mode, sets: todaySets, reps: today.reps, sec: today.sec }))
-      : entry.carried ? t('reps from your last session') : null
+      : entry.fromLastWorkout ? t('values from your last workout') : entry.carried ? t('reps from your last session') : null
     return <div className="small dim planline" style={{ marginBottom: 4 }}>
       {t('Plan: {0}', setsRepsOf({ ...planned, mode }))}{note ? ' · ' + note : ''}
     </div>
@@ -301,7 +301,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
   const cell = (s, i, col, cls) => (
     <div className={'stp ' + cls + (wc.steppers ? '' : ' plain')}>
       {wc.steppers && <button aria-label={t('Decrease')} onClick={() => bump(s, i, col, -1)}><Icon name="minus" /></button>}
-      <span className="val"><NumberField decimal={col.dec} nullable={col.opt} value={viewOf(col, s[col.f]) ?? ''}
+      <span className="val"><NumberField aria-label={t('Set {0}', setNumOf(s, i)) + ' · ' + col.hd} decimal={col.dec} nullable={col.opt} value={viewOf(col, s[col.f]) ?? ''}
         onChange={v => onField(i, col.f, col.store ? col.store(v) : v)} /></span>
       {wc.steppers && <button aria-label={t('Increase')} onClick={() => bump(s, i, col, 1)}><Icon name="plus" /></button>}
     </div>
@@ -375,6 +375,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
     titleClass: exerciseNameClass(ex),
     sections: [
       { title: t('Today'), items: [
+        dense && onFocus && { icon: 'play', label: t('Set current'), onClick: onFocus },
         onSwap && { icon: 'swap', label: t('Swap exercise'), onClick: onSwap, disabled: busy },
         { icon: 'sunrise', label: t('Add warm-up set'), onClick: onAddWarmup },
         { icon: 'note', label: entry.note ? t('Edit note') : t('Add note'), sub: entry.note || undefined, onClick: () => exerciseNoteSheet(entryIdx) },
@@ -602,6 +603,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       {thumb && <WorkoutThumb ex={ex} onExpand={() => update(s => { s.gifSize = 'full' })} />}
       <div style={{ flex: 1, minWidth: 0, fontSize: dense ? 20 : compact ? 17 : 20, fontWeight: 600, letterSpacing: '-.02em', lineHeight: 1.2 }} className={exerciseNameClass(ex)}>{exerciseNameFor(ex)}</div>
       <div className="row" style={{ gap: 2, flex: 'none' }}>
+        {dense && <span className="exercise-set-count" aria-label={t('{0} sets', entry.sets.filter(s => s.done).length + '/' + entry.sets.length)}>{entry.sets.filter(s => s.done).length}/{entry.sets.length}</span>}
         {entry.note && <button className="iconbtn" aria-label={t('Note')} title={t('Note')} style={{ color: 'var(--acc)' }}
           onClick={() => exerciseNoteSheet(entryIdx)}><Icon name="note" /></button>}
         <button className="iconbtn" aria-label={t('More')} title={t('More')} onClick={openMore}><Icon name="more" /></button>
@@ -614,14 +616,18 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       <Icon name="chartLineSlash" /><span>{t('Not counted for progression')}</span>
       {onNoProg && <button type="button" className="chip" onClick={() => onNoProg(false)}>{t('Undo')}</button>}
     </div>}
-    {/* compact view keeps the plan line: it is what the rows are measured against */}
+    {/* Last performance stays visible in the clean layout; the full history is one tap away. */}
+    {dense && refText && <button className="workout-previous" type="button" aria-label={refText + '. ' + t('History')} onClick={() => exerciseHistorySheet(entry.id)}>
+      <span>{refLabel}{refAgo ? ' · ' + refAgo : ''}</span>
+      <strong>{refSets.join(' · ')}</strong><Icon name="chevronRight" />
+    </button>}
     {dense && planLine}
     {wc.pairButtons && !compact && !dense && (onPairPrev || onPairNext) && <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
       {onPairPrev && <Button size="xs" variant="tinted" icon="link" title={t('Make superset with previous')} onClick={onPairPrev}>{t('Make superset with previous')}</Button>}
       {onPairNext && <Button size="xs" variant="tinted" icon="link" title={t('Make superset with next')} onClick={onPairNext}>{t('Make superset with next')}</Button>}
     </div>}
-    {/* compact view drops everything from here to the sets card — it is all still on the ⋯ menu
-        (note, details, history, bar weight, progression) or is display-only (tags, "last time"). */}
+    {/* The compact recap above keeps previous values visible. The detailed controls below
+        remain available through the ⋯ menu (notes, details, history, bar weight, progression). */}
     {!dense && <>
     <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
       {cardio && <span className="tag acc"><Icon name="figureRun" />{t('Cardio')}</span>}
@@ -653,10 +659,10 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       <span><strong>{t(guidance.policyLabel)}</strong> · {t(...guidance.why)}</span>
     </button>}
     </>}
-    <div className="card" style={{ marginTop: 10, marginBottom: 0 }}>
+    <div className="card exercise-sets" style={{ marginTop: 10, marginBottom: 0 }}>
       {/* the header carries the same eff3/timed sizing as the rows, or the labels drift off their
           columns; over L/R rows it also has to skip the side badge that sits in front of the weight cell */}
-      <div className={'sethead' + (col3 ? ' eff3' : '') + (timed ? ' timed' : '') + (perSide ? ' per-side' : '') + (wc.steppers ? '' : ' plain')}><span className="n-sp" /><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{timed && <span className="ck-sp" />}<span className="ck-sp" /></div>
+      <div className={'sethead' + (col3 ? ' eff3' : '') + (timed ? ' timed' : '') + (perSide ? ' per-side' : '') + (wc.steppers ? '' : ' plain')}><span className="n-sp">{dense ? t('Set') : ''}</span><span className="w-sp">{col1.hd}</span>{col2 && <span className="r-sp">{col2.hd}</span>}{col3 && <span className="eff-sp">{col3.hd}</span>}{timed && <span className="ck-sp" />}<span className="ck-sp" /></div>
       <span id={optsId} className="vh">{t('Options: copy, remove')}</span>
       {entry.sets.map((s, i) => {
         const warm = isWarmupRow(s)
@@ -730,7 +736,7 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
         <Button size="sm" icon="sunrise" onClick={onAddWarmup}>{t('Add warm-up set')}</Button>
         <Button size="sm" icon="minus" disabled={entry.sets.length <= setSpanAt(entry.sets, entry.sets.length - 1)[1]} onClick={onRemoveSet}>{t('Remove set')}</Button>
         <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>
-      </div> : <Button size="sm" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>}
+      </div> : <Button size="sm" variant={dense ? 'ghost' : undefined} className="workout-add-set" icon="plus" onClick={onAddSet}>{t('Add set')}</Button>}
     </div>
   </>
 }
@@ -903,8 +909,8 @@ function ActiveWorkout() {
   // Cards show one unit at a time with Prev/Next + swipe; list and compact stack every unit so
   // the whole session is visible and scrollable (Settings → During a workout → Workout view,
   // seeded onto s.active and overridable for this session from the header ⋮). compact is list
-  // with the per-exercise media, tag chips, note lines, "last time" and progression line
-  // stripped — just names, the one-line plan and set rows. Every set handler below is already entry-index
+  // with media, tags and detailed controls moved into menus, keeping previous values beside
+  // the plan and set rows. Every set handler below is already entry-index
   // parameterised, so these only change what is rendered — completion, rest, top-weight and
   // auto-advance share one path. Unknown/absent values read as cards, keeping every
   // pre-existing profile (and a session started before this field) as it was.
@@ -1209,6 +1215,7 @@ function ActiveWorkout() {
   // a superset member acts on that member, not on whatever the marker happens to point at.
   const blockProps = idx => ({
     editing,
+    onFocus: () => focusUnit(idx),
     onSwap: () => swapActiveWorkoutExercise(idx),
     onMoveUp: () => moveUnitAt(idx, -1),
     onMoveDown: () => moveUnitAt(idx, 1),
@@ -1342,6 +1349,11 @@ function ActiveWorkout() {
         { icon: 'gear', accent: true, chevron: true, label: t('Workout settings'),
           sub: [S.restSec > 0 ? t('{0} rest', fmtRest(S.restSec)) : t('No rest timer'), S.sound ? t('Sound') : t('Silent')].join(' · '),
           onClick: workoutSettingsSheet },
+        { icon: 'compact', label: t('Simplify screen'), sub: t('Compact layout, direct number entry and fewer controls.'), onClick: () => update(s => {
+          s.workoutView = 'compact'
+          s.wc = { ...workoutControls(s), steppers: false, setShortcuts: false, pairButtons: false, exerciseButtons: false }
+          if (s.active) delete s.active.workoutView
+        }) },
       ] },
       { title: t('Add'), items: [
         { icon: 'plusCircle', label: t('Add exercise'), onClick: addExercise },
@@ -1743,7 +1755,7 @@ function ActiveWorkout() {
       {editing
         ? <button className="iconbtn" aria-label={t('Close editor')} title={t('Close editor')} onClick={() => exitWorkoutEdit()}><Icon name="xmark" /></button>
         : <button className="iconbtn" aria-label={t('Minimize')} title={t('Minimize')} onClick={() => nav('/home')}><Icon name="chevronDown" /></button>}
-      <div className="whdr-mid"><div className="whdr-name">{A.name}</div><div className="sub">{(A.backfill || editing) ? fmtDate(A.d, true) : <Elapsed start={A.start} />} · {t('{0} sets', done + '/' + total)}</div></div>
+      <div className="whdr-mid"><div className="sub">{(A.backfill || editing) ? fmtDate(A.d, true) : <Elapsed start={A.start} />}</div></div>
       <div className="workout-tools">
         <RestTimerButton />
         <button className="iconbtn" aria-label={t('Workout options')} title={t('Workout options')} onClick={openViewMenu}><Icon name="more" /></button>
@@ -1751,7 +1763,8 @@ function ActiveWorkout() {
       <button className="btn primary pill whdr-finish" aria-label={editing ? t('Save changes') : undefined}
         onClick={() => (editing ? finishWorkout() : finishWorkoutSheet({ onDiscard: discardWorkout }))}>{editing ? t('Save') : t('Finish')}</button>
     </div>
-    <div className="wprog"><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
+    <div className="workout-title"><h1>{A.name}</h1><span>{t('{0} sets', done + '/' + total)}</span></div>
+    <div className="wprog" role="progressbar" aria-label={t('Workout progress')} aria-valuemin={0} aria-valuemax={total || 1} aria-valuenow={done}><i style={{ width: (total ? done / total * 100 : 0) + '%' }} /></div>
     </div>
     {editing && <p className="muted small">{t('Editing a saved workout. Date and duration stay unchanged.')}</p>}
     {A.backfill && <div className="muted small" style={{ marginBottom: 8 }}>{t('Logging a past workout, so no rest timers.')}</div>}
@@ -1762,12 +1775,12 @@ function ActiveWorkout() {
           const multi = u.length > 1
           const isCur = u.includes(cur)
           return <section key={u.join('-')} className={'wl-unit' + (isCur ? ' cur' : '')} data-exidx={u[0]}>
-            <div className="wl-hd">
+            {!dense && <div className="wl-hd">
               <span className="muted small">{multi ? t('Superset {0} / {1}', ui + 1, units.length) : t('Exercise {0} / {1}', ui + 1, units.length)}</span>
               {isCur
                 ? <span className="tag acc">{t('Current')}</span>
                 : <button className="chip" onClick={() => focusUnit(u[0])}>{t('Set current')}</button>}
-            </div>
+            </div>}
             {multi ? (
               <div className="ss-card">
                 <div className="ss-hd" style={{ justifyContent: 'space-between' }}>

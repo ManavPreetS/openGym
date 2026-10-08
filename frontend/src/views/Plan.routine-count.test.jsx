@@ -34,6 +34,7 @@ vi.mock('../sheets.jsx', () => ({
 
 let host, root
 beforeEach(() => {
+  localStorage.setItem('gym_plan_view', 'schedule')
   mocks.S = {
     unit: 'kg', workouts: [], exWeights: {}, week: {}, dayPlan: {},
     routines: [{ id: 'r1', name: 'Push', emoji: null, ex: [] }, { id: 'r2', name: 'Pull', emoji: null, ex: [] }],
@@ -52,6 +53,17 @@ const mount = () => act(() => root.render(<Plan />))
 const countOn = day => host.querySelector(`.plan-day[aria-label="${day}"] .ss`)?.textContent
 
 describe('Plan — the day header counts its routines', () => {
+  it('opens the routine list by default and keeps the schedule one tap away', () => {
+    localStorage.removeItem('gym_plan_view')
+    mount()
+    expect(host.querySelector('h1').textContent).toBe('Routines')
+    expect(host.querySelector('.plan-day')).toBeNull()
+    expect(host.textContent).toContain('Push')
+    act(() => host.querySelector('.plan-schedule-entry').click())
+    expect(host.querySelector('h1').textContent).toBe('Schedule')
+    expect(host.querySelector('.plan-day')).toBeTruthy()
+  })
+
   it('names the exercises of a single routine, and counts the routines of a combined day', () => {
     mocks.S.week = { 1: ['r1'], 2: ['r1', 'r2'] }
     mount()

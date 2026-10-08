@@ -10,6 +10,9 @@ import { supersetUnits, moveRoutineEntry, cleanupSg, exLine, defaultConfig } fro
 import { Thumb } from '../components/Media.jsx'
 import { glyphPicker, exercisePicker, exConfigSheet, confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
+import StartingValuesRow, { startingValuesLabel } from '../components/StartingValuesRow.jsx'
+import { startFromOf } from '../lib/session-start.js'
+import './plan.css'
 import { glyphOf } from '../lib/glyphs.js'
 import { Button, Row, SelectRow, Switch } from '../components/ui.jsx'
 import SwipeRow from '../components/SwipeRow.jsx'
@@ -460,10 +463,17 @@ export default function RoutineEdit() {
       <button className="iconbtn" aria-label={t('Pick an icon')} onClick={() => glyphPicker(r.emoji, g => update(s => { s.routines.find(x => x.id === id).emoji = g }))}><Icon name={glyphOf(r.emoji)} /></button>
     </div>
 
+    <details className="routine-preferences">
+      <summary><Icon name="slider" /><span>{t('Progression')}</span><small>{startingValuesLabel(startFromOf(S, r))}</small><Icon name="chevronDown" /></summary>
     <div className="sect-b" style={{ marginBottom: 16 }}>
-      <SelectRow icon="chartLine" title={t('Progression')} sheetTitle={t('Progression')}
+      <StartingValuesRow state={S} routine={r} onChange={v => update(s => {
+        const routine = s.routines.find(x => x.id === id)
+        if (v === 'default') delete routine.startFrom
+        else routine.startFrom = v
+      })} />
+      {startFromOf(S, r) !== 'lastWorkout' && <SelectRow icon="chartLine" title={t('Progression')} sheetTitle={t('Progression')}
         value={r.prog || 'linear'} onChange={v => update(s => { s.routines.find(x => x.id === id).prog = v })}
-        options={POLICIES_FOR.reps.map(p => ({ value: p, label: t(POLICY_NAME[p]), subtitle: t(POLICY_DESC[p]) }))} />
+        options={POLICIES_FOR.reps.map(p => ({ value: p, label: t(POLICY_NAME[p]), subtitle: t(POLICY_DESC[p]) }))} />}
       {/* Two controls that read alike and are not (issue #294). Progression picks how this
           routine's own targets move, and "No automatic progression" keeps them where they are.
           This switch decides whether the routine's workouts count at all: a deload routine's
@@ -481,8 +491,12 @@ export default function RoutineEdit() {
     <div className="small dim" style={{ margin: '-10px 2px 16px' }}>
       {r.excludeFromProgression
         ? t('A deload routine opens at the numbers set here, so the progression above does not apply to it.') + ' ' + t('The next regular target continues from the last included workout.')
-        : t(POLICY_DESC[r.prog || 'linear'] || POLICY_DESC.linear) + ' ' + t('Applies to every exercise in this routine that does not set its own rule.')}
+        : startFromOf(S, r) === 'lastWorkout'
+          ? t('Start with the weights and reps you last completed in this routine. You choose when to increase them.')
+          : t(POLICY_DESC[r.prog || 'linear'] || POLICY_DESC.linear) + ' ' + t('Applies to every exercise in this routine that does not set its own rule.')}
     </div>
+
+    </details>
 
     {missingCount > 0 && <div className="card" style={{ marginBottom: 16, borderColor: 'var(--orange)' }}>
       <div className="row" style={{ gap: 8, alignItems: 'center' }}>

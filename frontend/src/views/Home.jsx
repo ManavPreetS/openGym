@@ -16,7 +16,7 @@ import { Button } from '../components/ui.jsx'
 import { tappable } from '../lib/use-sheet-keyboard.js'
 import { glyphOf } from '../lib/glyphs.js'
 
-// Home = what to do now + a quick glance. Deep charts & history live in Stats.
+// Home = what to do now + a quick glance. Completed workouts have their own Log tab.
 export default function Home() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
@@ -187,6 +187,10 @@ export default function Home() {
         <div style={{ height: 8 }} /><Button onClick={() => nav('/plan')}>{t('Build my own plan')}</Button>
       </div>
     )}
+
+    <button className="home-library" onClick={() => nav('/library')}>
+      <Icon name="dumbbell" /><span>{t('Exercise library')}</span><Icon name="chevronRight" />
+    </button>
 
     {S.showWeightCard !== false && <div className="card">
       <div className="row between bw-head" style={{ marginBottom: 6 }}>
